@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from dotenv import load_dotenv
 import requests
+from datetime import datetime
 
 load_dotenv()
 
@@ -34,19 +35,29 @@ class TokenManager:
 
     @staticmethod
     def get_bearer_access_token() -> str:
+        print(Config.get_config())
         response = requests.post(
             TokenManager.API,
             json=Config.get_config(),
         )
-        response.raise_for_status()
+
+        print(response.status_code)
+
         TokenManager.access_token = response.json().get("access_token", "")
         TokenManager.expiry = response.json().get("expiry", 0)
+
+        print("Access Token Details:")
+        print(f"Access Token: {TokenManager.access_token}")
+        print(f"Expiry: {TokenManager.expiry}")
 
         return TokenManager.access_token
 
     @staticmethod
     def get_access_token() -> str:
         if TokenManager.expiry <= 0:
+            return TokenManager.get_bearer_access_token()
+
+        if datetime.now().timestamp() > TokenManager.expiry - 900:
             return TokenManager.get_bearer_access_token()
 
         if not TokenManager.access_token:
@@ -67,13 +78,15 @@ class Logger:
     @staticmethod
     def log(stack: str, level: str, package: str, message: str) -> None:
         headers = TokenManager.get_headers()
+        print(headers)
         payload = {
-            "stack": stack,
+            "stack": "backend",
             "level": level,
             "package": package,
             "message": message,
         }
         response = requests.post(Logger.API, json=payload, headers=headers)
+        print(response.status_code, response.json())
         response.raise_for_status()
 
     @staticmethod
